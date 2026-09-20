@@ -13,25 +13,28 @@ The current target is an **Elecrow CrowPanel 7-inch HMI, V3.0**, with an **ESP32
 The supplied hardware log confirms that dESPcent:
 
 - Boots with ESP-IDF v6.0.1 at 240 MHz and detects 8 MB PSRAM and 4 MB flash.
-- Mounts the SD card and starts the RGB display.
+- Mounts the SD card and starts the 800×480 RGB display.
 - Authenticates and connects to an Xbox Wireless Controller over BLE.
+- Runs an animated hardware/data POST with SD verification, battery status, and touch-to-continue handoff.
 - Passes the required `DESCENT.HOG` and `DESCENT.PIG` readability checks and identifies the known registered 1.0 reference data pair.
-- Reads battery charge and voltage from the LC709203F fuel gauge.
 - Enters Descent's native `INFERNO` startup and prints the registered v1.5 engine banner.
-- Bypasses legacy DOS memory/file checks to initialize the palette system and enter graphics mode.
-- Successfully decodes and renders the opening Interplay and Parallax Software logo sequences directly to the 800x480 RGB panel.
-- Loads palettes
-- Loads fonts
+- Initializes the original palette and font systems.
+- Successfully decodes and renders the Interplay, Parallax Software, and Descent startup screens directly to the ESP32-S3's RGB panel.
 
-![Interplay logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_interplay_logo.jpg?raw=true)
-*The software renderer successfully outputting the Interplay logo to the ESP32-S3's RGB panel.*
+![dESPcent startup POST verifying Descent data on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifying.jpg?raw=true)
+*The animated POST verifies SD data while hardware status remains visible, including live battery state.*
 
-![Parallax Software logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_parallax_logo.jpg?raw=true)
-*The Parallax Software logo sequence.*
+![dESPcent startup POST complete and ready to launch.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifed.jpg?raw=true)
+*Verification complete and ready to launch. Touch input hands control off to the original Descent startup sequence.*
 
-![dESPcent startup POST on the CrowPanel, showing mounted SD storage and passing Descent archive checks.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_screen.jpg?raw=true)
+![Interplay logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_interplay_logo.jpg?raw=true)
+*The software renderer outputs the Interplay logo directly to the ESP32-S3's 800×480 RGB panel.*
 
-*Working POST on hardware. The memory figures in this photograph belong to that build and startup stage; they are not the remaining game heap in every configuration.*
+![Parallax Software logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_parallax_logo.jpg?raw=true)
+*The Parallax Software logo sequence rendered on the CrowPanel.*
+
+![Descent logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_logo.jpg?raw=true)
+*The original Descent logo on the ESP32-S3 as the native startup sequence continues.*
 
 ```
 PS C:\Projects\dESPcent> $env:IDF_PATH = 'C:\esp\v6.0.1\esp-idf';
@@ -250,9 +253,9 @@ int bm_init()
 }
 ```
 
-Now halting in piggy_init, which is where the BITMAPS.BIN file gets processed and the BITMAPS.TBL is built.
+The current halt occurs immediately after piggy_init() returns. Early Descent data has been identified successfully, but the original BMREAD path that populates the bitmap/game-definition tables from BITMAPS.BIN / BITMAPS.TBL has not yet been ported.
 
-The next step is to establish the engine's actual allocation requirements and adapt the check accordingly, while accounting for the very limited internal heap. Passing or bypassing that check alone would not establish that the game fits or runs correctly.
+The next step is to port the early-D1 BMREAD/game-definition path so bitmap metadata can be populated and initialization can continue beyond bm_init().
 
 Menus, level rendering, playable controls, sound, and music are not demonstrated by this startup log. There is no measured gameplay frame rate yet.
 
@@ -285,7 +288,7 @@ Menus, level rendering, playable controls, sound, and music are not demonstrated
 
 ![Rear of the prototype, showing the MakerFocus 3700 mAh battery and Adafruit LC709203F fuel gauge.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_proto_0.1_rear.jpg?raw=true)
 
-The battery and gauge are additions to this prototype. Their presence does not establish battery runtime, which has not been measured here. A 32 GB SD card is not a project requirement.
+The battery and gauge are additions to this prototype. Their presence does not establish battery runtime, which has not been measured here.
 
 ### Peripheral connections
 
