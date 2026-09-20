@@ -4,7 +4,7 @@ A development gallery documenting the port of the original Descent to a portable
 
 ## Startup POST on Hardware
 
-[![dESPcent running on a CrowPanel display, with board diagnostics on the left and Descent SD card file checks on the right.](/assets/images/despcent_post_screen.jpg)](/assets/images/despcent_post_screen.jpg)
+<img width="1695" height="1271" alt="despcent_post_screen" src="https://github.com/user-attachments/assets/c49db7bc-f9be-46db-aa6f-4ec8eb450b25" />
 
 *The board boots, the display works, and the required Descent archives are readable from the SD card. Click the photo to view it at full resolution.*
 
