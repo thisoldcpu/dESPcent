@@ -111,14 +111,12 @@ I (1103) descent: Heap after display reserve: total=4522123 internal=77179 DMA=6
 I (1113) BLE_INIT: BT controller compile version [b7de11e]
 I (1123) BLE_INIT: Using main XTAL as clock source
 I (1123) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1
-I (1133) BLE_INIT: Bluetooth MAC: 74:4d:bd:9d:91:b6
+I (1133) BLE_INIT: Bluetooth MAC: 00:00:00:00:00:00
 I (1133) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10
 I (1183) descent: Heap after BLE begin: total=4459623 internal=18607 DMA=10819 PSRAM=4441016 largest_internal=10752 largest_DMA=10752 largest_PSRAM=4325376
 I (1193) descent: BLE controller ready; scanning for Xbox controller
-BLE: 20:64:de:b2:84:d8, RSSI: -60, UUID: 0x0000, APPEARANCE: 0x0000, ADDR_TYPE: 'PUBLIC', NAME: 'J's Charge 4'
 I (1203) descent: Heap after BLE init: total=4453283 internal=12319 DMA=4531 PSRAM=4440964 largest_internal=7680 largest_DMA=4352 largest_PSRAM=4325376
 I (1213) descent: Heap before display init: total=4453283 internal=12319 DMA=4531 PSRAM=4440964 largest_internal=7680 largest_DMA=4352 largest_PSRAM=4325376
-BLE: 74:6d:fa:71:1f:d9, RSSI: -67, UUID: 0x0000, APPEARANCE: 0x0000, ADDR_TYPE: 'PUBLIC'
 I (1243) descent-display: RGB scanout started
 I (1243) descent: Heap after display init: total=4453283 internal=12319 DMA=4531 PSRAM=4440964 largest_internal=7680 largest_DMA=4352 largest_PSRAM=4325376
 I (1253) descent: Heap before POST: total=4453283 internal=12319 DMA=4531 PSRAM=4440964 largest_internal=7680 largest_DMA=4352 largest_PSRAM=4325376
@@ -194,7 +192,7 @@ Opening logos, menus, level rendering, playable controls, sound, and music are n
 | Touch | GT911 capacitive controller; V3.0 startup uses the PCA9557 I²C expander |
 | Audio hardware | NS4168 amplifier with an I²S digital interface; engine audio output remains unfinished |
 | Wireless controller | BLE Xbox Wireless Controller; decoder targets model 1914 |
-| Prototype battery | MakerFocus 3.7 V, 3,700 mAh battery, as labeled in the photograph |
+| Prototype battery | MakerFocus 3.7 V, 3,700 mAh battery |
 | Battery gauge | Adafruit LC709203F breakout over I²C |
 
 ![Rear of the prototype, showing the MakerFocus 3700 mAh battery and Adafruit LC709203F fuel gauge.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_proto_0.1_rear.jpg?raw=true)
