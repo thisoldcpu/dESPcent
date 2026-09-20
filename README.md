@@ -141,13 +141,16 @@ Copyright (C) 1994, 1995 Parallax Software Corporation
 DESCENT is a trademark of Interplay Productions, Inc.
 
 Type 'DESCENT -help' for a list of command-line options.
-Available memory
-Internal free: 6247 bytes; largest block: 2560 bytes
-PSRAM detected: 8388608 bytes; free: 4421304 bytes; largest block: 4325376 bytes
-Flash detected: 4194304 bytes; configured: 4MB
-Insufficient available memory: original 7.5 MiB startup requirement not met.
-I (21023) descent: INFERNO returned 1
-I (20873) main_task: Returned from app_main()
+
+[MONO 0: Debug Spew]
+
+[MONO 1: Errors & Serious Warnings]
+WVIDEO_running = 0
+I (20993) mouse-touch: GT911 at 0x14: 800x480; touch = left mouse
+Going into graphics mode...
+Initializing palette system...
+
+***ERROR*** A stack overflow in task main has been detected.
 ```
 
 ### Current startup blocker
