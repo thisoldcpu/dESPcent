@@ -1,104 +1,27 @@
 # dESPcent
 
-**dESPcent** is an experimental port of the original **Descent** engine to the **ESP32-S3**.
+**dESPcent** is an experimental native port of the original **Descent** engine to the **ESP32-S3**.
 
-The goal is simple: find out just how much mid-1990s PC game an ESP32-S3 can actually run when we're executing the game natively rather than emulating the PC underneath it.
+The goal is simple: find out how much mid-1990s PC game an ESP32-S3 can run when it executes the engine directly, without emulating the PC underneath it.
 
-This project is currently targeting an **Elecrow CrowPanel 7" ESP32-S3 HMI** with an 800×480 display, 8 MB PSRAM, and 4 MB flash.
-
-## Goals
-
-- Run the original Descent engine natively on ESP32-S3
-- Preserve the original fixed-point software-rendering architecture where practical
-- Avoid unnecessary desktop compatibility layers and dependencies
-- Use PSRAM carefully rather than assuming desktop-scale memory
-- Support SD-card game data
-- Support gamepad controls
-- Provide sound and music
-- Render internally at a resolution appropriate for the ESP32-S3
-- Scale the resulting framebuffer efficiently to the 800×480 display
-- Remain recognizable as the original Descent engine rather than becoming a ground-up reimplementation
-
-## Target Hardware
-
-Initial development target:
-
-The dESPcent project targets the Elecrow CrowPanel 7.0" HMI ESP32 Display, powered by the ESP32-S3-WROOM-1-N4R8 module. While modern microcontrollers offer clock speeds that easily exceed mid-90s desktop PCs, translating a fully 3D, six-degrees-of-freedom engine like *Descent* to an embedded architecture requires navigating fundamental differences in memory behavior, storage interfaces, and display scanning techniques. 
-
-## Hardware Specification Comparison
-
-| Component | 1995 Minimum | 1995 Recommended | dESPcent (CrowPanel ESP32-S3) |
-| :--- | :--- | :--- | :--- |
-| **Processor** | Intel 386 @ 33 MHz | Intel 486 @ 33–66 MHz | ESP32-S3 (Dual-core Xtensa @ 240 MHz) |
-| **Volatile Memory** | 4 MB RAM | 8 MB RAM | 8 MB PSRAM |
-| **Non-Volatile** | 20 MB Hard Drive | 20 MB Hard Drive | 4 MB SPI Flash + 32GB SD Card |
-| **Display/Video** | VGA (320x200) | SVGA (640x480) | 7.0" 800x480 RGB Panel |
-| **Audio** | Sound Blaster/AdLib | Sound Blaster 16 | I2S via NS4168 Power Amplifier |
-| **Power/Portability** | AC Desktop Power | AC Desktop Power | 3700mAh LiPo & Adafruit LC709203F Battery Gauge |
-
-## Memory Architecture: The 8MB Illusion
-
-Matching the original 8 MB recommended memory footprint with the ESP32-S3's 8 MB PSRAM creates an illusion of parity. However, the architectural realities necessitate strict memory management strategies:
-
-*   **8MB EDO DRAM is not PSRAM:** In 1995, EDO (Extended Data Out) DRAM provided low-latency, parallel access directly over the motherboard's memory bus. The ESP32-S3 relies on serial SPI-based PSRAM. While PSRAM provides the necessary capacity, serializing memory requests over a bus introduces cache-miss latency penalties that did not exist on a 486 processor.
-*   **EDO DRAM is not Flash:** Original DOS gaming loaded assets from the hard drive directly into fast, executable RAM. On the ESP32-S3, the 4 MB onboard Flash executes code via XIP (eXecute In Place). Flash memory offers significantly lower throughput than PSRAM or 1990s DRAM. Performance-critical engine loops and lookup tables must be aggressively pinned to the ESP32-S3's small internal SRAM to avoid bus contention between fetching instructions from Flash and reading level geometry from PSRAM.
-*   **Asset Streaming & Storage:** The original game relied on a fast-spinning hard drive (relative to its era). dESPcent utilizes a 32GB SD Card connected via a 4-pin SPI interface (MOSI / MISO / SCLK / CS mapping to GPIOs 11, 13, 12, and 10). Streaming bulk level data, textures, and audio concurrently demands careful DMA scheduling to prevent stuttering.
-
-## Display Dynamics and Framebuffer Footprints
-
-The continuous scanning requirements of the CrowPanel's 800x480 RGB display present the largest departure from vintage VGA rendering. The ESP32-S3 uses a continuously scanned RGB interface, which differs completely from older command/data interfaces.
-
-*   **Bandwidth Overhead:** A conventional 800x480 RGB565 framebuffer consumes 768,000 bytes. Implementing double buffering costs 1,536,000 bytes, instantly claiming nearly 20% of the available PSRAM. 
-*   **Active Scanout Limits:** At the calculated panel timing of ~30.79 refreshes per second, active scanout requires approximately 23.65 MB/s of pixel payload bandwidth. This massive data movement occurs before the CPU performs any rendering writes, potentially starving other memory users.
-*   **Rendering Compromises:** To respect bandwidth limits and optimize PSRAM bus load, dESPcent targets a smaller 384x240 indexed engine framebuffer, which only requires 92,160 bytes. This low-resolution buffer will be upscaled to a 768x480 active area with 16-pixel side borders. 
-
-## Hardware Boons and Modern Integration
-
-Despite the architectural bottlenecks, the ESP32-S3 platform introduces significant quality-of-life integrations unseen in the 1995 PC ecosystem:
-
-*   **Compact Self-Sufficiency:** A fully self-contained portable unit is achieved via the JST 2 jumper cable, MakerFocus 2700mAh LiPo battery, and I2C fuel gauge.
-*   **Modern Audio I/O:** The built-in NS4168 amplifier manages I2S digital audio natively. By routing the SDIN to GPIO17, LRCLK to GPIO18, and BCLK to GPIO42, the system completely replaces legacy sound cards and eliminates vintage IRQ conflicts.
-*   **Capacitive Touch:** The integrated GT911 capacitive touch interface—managed via the PCA9557 I2C expander for reset and address-selection timing opens up modern UI interaction paradigms for menus without requiring a bulky keyboard and mouse.
-
-Other ESP32-S3 hardware may be supported later where practical.
-
-## Display Strategy
-
-The 800×480 panel is the **output resolution**, not necessarily the rendering resolution.
-
-The original Descent renderer was designed for considerably more constrained hardware than a modern PC, making its software renderer and fixed-point mathematics particularly interesting on a microcontroller.
-
-Initial targets will likely include resolutions such as:
-
-- 320×200
-- 320×240
-- 384×240
-
-A 384×240 framebuffer can be scaled 2× to **768×480**, leaving only narrow side borders on the 800×480 display while requiring the engine to render less than one quarter of the panel's native pixel count.
-
-## Development Philosophy
-
-Accuracy and functionality come first.
-
-The initial objective is not to rewrite or heavily simplify Descent until it fits. Instead, we'll establish a working baseline, identify the actual CPU, memory, rendering, and I/O bottlenecks, and optimize based on measurements.
-
-If something is slow, we want to know **why** it's slow.
-
-If something has to be changed for the ESP32-S3, that change should have a measurable reason for existing.
+The current target is an **Elecrow CrowPanel 7-inch HMI, V3.0**, with an **ESP32-S3-WROOM-1-N4R8**, an **800×480 RGB display**, **8 MB PSRAM**, and **4 MB flash**.
 
 ## Current Status
 
-**Very early development.**
+**It's alive: native startup is running on hardware. Gameplay is still a work in progress.**
 
-Right now, dESPcent is an experiment:
+The supplied hardware log confirms that dESPcent:
 
-> Can an ESP32-S3 run a useful native port of Descent?
+- Boots with ESP-IDF v6.0.1 at 240 MHz and detects 8 MB PSRAM and 4 MB flash.
+- Mounts the SD card and starts the RGB display.
+- Authenticates and connects to an Xbox Wireless Controller over BLE.
+- Passes the required `DESCENT.HOG` and `DESCENT.PIG` readability checks and identifies the known registered 1.0 reference data pair.
+- Reads battery charge and voltage from the LC709203F fuel gauge.
+- Enters Descent's native `INFERNO` startup and prints the registered v1.5 engine banner.
 
-~~We don't know yet. That's the fun part.~~
+![dESPcent startup POST on the CrowPanel, showing mounted SD storage and passing Descent archive checks.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_screen.jpg?raw=true)
 
-**It's alive!**
-
-The core Descent engine natively boots on the ESP32-S3. It successfully mounts the SD card, initializes Bluetooth for wireless controllers, and passes the initial `DESCENT.HOG` and `DESCENT.PIG` asset checks. 
+*Working POST on hardware. The memory figures in this photograph belong to that build and startup stage; they are not the remaining game heap in every configuration.*
 
 ```
 I (25) boot: ESP-IDF v6.0.1 2nd stage bootloader
@@ -229,28 +152,144 @@ I (21023) descent: INFERNO returned 1
 I (20873) main_task: Returned from app_main()
 ```
 
-The engine is currently executing real 1995 code and immediately crashing because it thinks it's running into the memory wall. The next major hurdle is bypassing these legacy DOS environment checks and bringing up the software renderer.
+### Current startup blocker
+
+The supplied log ends with:
+
+```text
+Internal free: 6247 bytes; largest block: 2560 bytes
+PSRAM detected: 8388608 bytes; free: 4421304 bytes; largest block: 4325376 bytes
+Flash detected: 4194304 bytes; configured: 4MB
+Insufficient available memory: original 7.5 MiB startup requirement not met.
+I (21023) descent: INFERNO returned 1
+```
+
+This is a deliberate startup rejection, not a crash. The current memory check retains a 7.5 MiB free-memory threshold. By this stage, engine data, code, display buffers, Bluetooth, and other services already occupy part of the available RAM.
+
+The next step is to establish the engine's actual allocation requirements and adapt the check accordingly, while accounting for the very limited internal heap. Passing or bypassing that check alone would not establish that the game fits or runs correctly.
+
+Opening logos, menus, level rendering, playable controls, sound, and music are not demonstrated by this startup log. There is no measured gameplay frame rate yet.
+
+## Goals
+
+- Run the original Descent engine natively on ESP32-S3.
+- Preserve its fixed-point mathematics, software renderer, and gameplay behavior where practical.
+- Replace DOS-specific hardware access with ESP-IDF implementations.
+- Use internal RAM and PSRAM according to measured requirements.
+- Load game data from SD storage.
+- Support gamepad controls, sound, and music.
+- Render at a practical internal resolution and scale to the 800×480 panel.
+- Keep the result recognizable as a port of Descent, rather than a ground-up reimplementation.
+
+## Target Hardware
+
+| Component | Current target or prototype |
+| --- | --- |
+| Board | Elecrow CrowPanel 7-inch HMI, V3.0 |
+| Processor | Dual-core ESP32-S3, configured at 240 MHz |
+| Memory | Internal SRAM plus 8 MB external octal PSRAM, configured at 80 MHz |
+| Flash | 4 MB, configured for QIO at 80 MHz |
+| Storage | FAT-formatted SD card over SPI; the supplied boot log reports a nominal 16 GB card |
+| Display | 800×480 RGB panel, RGB565 output |
+| Touch | GT911 capacitive controller; V3.0 startup uses the PCA9557 I²C expander |
+| Audio hardware | NS4168 amplifier with an I²S digital interface; engine audio output remains unfinished |
+| Wireless controller | BLE Xbox Wireless Controller; decoder targets model 1914 |
+| Prototype battery | MakerFocus 3.7 V, 3,700 mAh battery, as labeled in the photograph |
+| Battery gauge | Adafruit LC709203F breakout over I²C |
+
+![Rear of the prototype, showing the MakerFocus 3700 mAh battery and Adafruit LC709203F fuel gauge.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_proto_0.1_rear.jpg?raw=true)
+
+The battery and gauge are additions to this prototype. Their presence does not establish battery runtime, which has not been measured here. A 32 GB SD card is not a project requirement.
+
+### Peripheral connections
+
+| Interface | GPIO assignment |
+| --- | --- |
+| SD MOSI / MISO / SCLK / CS | 11 / 13 / 12 / 10 |
+| I²C SDA / SCL | 19 / 20 |
+| I²S data out / LRCLK / BCLK | 17 / 18 / 42 |
+| LCD backlight | 2 |
+
+Other ESP32-S3 boards may be supported later, but this is currently a board-specific port.
+
+## Memory and Display Strategy
+
+Having 8 MB of PSRAM does not mean that 8 MB is available to the game. Large engine arrays, firmware instructions and read-only data, display buffers, and eligible Bluetooth allocations share that external memory. Internal RAM is still needed for resources such as task stacks and display DMA buffers.
+
+The current configuration enables execution from PSRAM: ESP-IDF copies flash-backed instructions and read-only data into PSRAM at startup. This consumes additional PSRAM and supports the RGB bounce-buffer path during later flash operations, such as saving Bluetooth pairing information. The firmware remains stored in flash.
+
+The display driver currently reserves:
+
+| Buffer | Size |
+| --- | ---: |
+| One 800×480 RGB565 framebuffer | 768,000 bytes |
+| Two RGB565 framebuffers | 1,536,000 bytes |
+| Two internal DMA bounce buffers, 10 lines each | 32,000 bytes total |
+| Current 800×480 indexed engine buffer, allocated by graphics initialization | 384,000 bytes |
+
+Display buffers are reserved before Bluetooth initialization to secure the required internal DMA allocations. RGB scanout starts afterward. Engine graphics initialization reuses the existing panel.
+
+At the configured 15 MHz pixel clock and 928×525 total timing, the calculated panel refresh rate is approximately **30.79 Hz**. Active RGB565 pixel payload is approximately **23.65 MB/s**, before rendering writes and other memory traffic. This is a display timing calculation, not a measured game frame rate.
+
+### Planned lower-resolution rendering
+
+The current graphics implementation uses an 800×480 indexed backing buffer. The proposed **384×240** engine framebuffer and **2× scaling to 768×480**, with **16-pixel side borders**, are not yet implemented.
+
+A 384×240 indexed buffer would require 92,160 bytes. It would reduce the number of engine pixels to render, but it would not by itself remove the full-size RGB output buffers or the panel's continuous scanout bandwidth.
+
+## Controls and Audio
+
+BLE controller connection has been demonstrated. A joystick adapter is present in the source, but axis orientation, calibration, bindings, and in-game behavior still need hardware validation.
+
+The GT911 has a touch-backed mouse implementation. That does not yet establish touch-selectable game menus; menu integration and hardware validation remain separate work.
+
+The board's I²S audio pins are identified, but the current sound code does not provide a working ESP32 I²S playback backend. Sound effects and music remain goals.
 
 ## Game Data
 
-dESPcent does **not** intend to distribute the original Descent game assets.
+Provide compatible `DESCENT.HOG` and `DESCENT.PIG` files from your own copy of Descent. Original game assets are not part of the intended project distribution.
 
-Users will need to provide compatible game data from their own copy of Descent.
+Place both files together in the SD card root or in a directory named `DESCENT`:
+
+```text
+SD card/
+└── DESCENT/
+    ├── DESCENT.HOG
+    └── DESCENT.PIG
+```
+
+The firmware mounts the card at `/sdcard`. A complete readable pair in the root takes precedence over `/DESCENT`; `/DESCENT_AUTO` is the fallback for automatically installed data.
+
+POST reports file readability, known data fingerprints, and archive-layout information. A `PASS` for a readable, nonempty file is not proof that every asset is valid or that an entire release is playable. The engine's v1.5 banner and the detected data release are separate identifiers.
+
+### Optional ISO installation
+
+Instead of copying the two archives yourself, place one supported ISO image in the SD root or `/DESCENT`. If a readable loose pair is already available, it is used without extraction. Otherwise, the installer looks for both archives together inside the image, stages and verifies them, and promotes the result to `/DESCENT_AUTO`.
+
+Existing game-data directories are not overwritten. The ISO can be removed after successful installation; runtime uses the extracted archives. Compressed installers and raw BIN/CUE images are not supported by this reader.
+
+## Development Philosophy
+
+Accuracy and functionality come first. Preserve the original engine where practical, establish a working baseline, and optimize according to measurements of CPU use, memory, rendering, and I/O.
+
+If something is slow, we want to know **why**. If something changes for the ESP32-S3, there should be a concrete reason for the change.
+
+This is an ESP-IDF CMake project. The supplied hardware run used **ESP-IDF v6.0.1** with the `esp32s3` target. The root `sdkconfig`, `sdkconfig.defaults`, and `partitions.csv` describe the current configuration. The custom partition table provides a single factory application partition within 4 MB flash; it does not provide OTA slots.
+
+The files under [docs](docs) record individual porting steps and checks. Some describe earlier snapshots and should not be read as current feature status.
 
 ## Source and Licensing
 
-Descent's original source code was publicly released by Parallax Software, and subsequent projects such as D1X and DXX-Rebirth have continued development of the engine.
+The source baseline is the original **Descent 1 v1.5** release, rather than D1X or DXX-Rebirth. Platform-specific code is being adapted or replaced for ESP32-S3 while retaining the original engine structure and notices.
 
-dESPcent will retain applicable copyright notices and licensing requirements from the source code on which it is based.
+The ported Parallax source files carry a license notice restricting use to non-commercial, royalty- or revenue-free purposes. The project should not be described as having a blanket permissive open-source license. Applicable source and third-party notices must be retained; consolidated distribution licensing documentation remains to be completed.
 
-The exact source baseline and resulting licensing documentation will be established as the port is brought up.
+Game data is separate from the source release and is not made freely distributable by the availability of engine source.
 
-**Descent** is a trademark of its respective owners.
-
-dESPcent is an independent open-source project and is not affiliated with or endorsed by the owners of the Descent intellectual property.
+**Descent** is a trademark of its respective owners. dESPcent is an independent project and is not affiliated with or endorsed by those owners.
 
 ## Why?
 
 Because an ESP32-S3 running Descent would be ridiculous.
 
-And because we want to know if it can.
+And now the startup code is running. Next comes the game.
