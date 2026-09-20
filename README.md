@@ -18,6 +18,16 @@ The supplied hardware log confirms that dESPcent:
 - Passes the required `DESCENT.HOG` and `DESCENT.PIG` readability checks and identifies the known registered 1.0 reference data pair.
 - Reads battery charge and voltage from the LC709203F fuel gauge.
 - Enters Descent's native `INFERNO` startup and prints the registered v1.5 engine banner.
+- Bypasses legacy DOS memory/file checks to initialize the palette system and enter graphics mode.
+- Successfully decodes and renders the opening Interplay and Parallax Software logo sequences directly to the 800x480 RGB panel.
+- Loads palettes
+- Loads fonts
+
+![Interplay logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_interplay_logo.jpg?raw=true)
+*The software renderer successfully outputting the Interplay logo to the ESP32-S3's RGB panel.*
+
+![Parallax Software logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_parallax_logo.jpg?raw=true)
+*The Parallax Software logo sequence.*
 
 ![dESPcent startup POST on the CrowPanel, showing mounted SD storage and passing Descent archive checks.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_screen.jpg?raw=true)
 
@@ -146,11 +156,34 @@ Type 'DESCENT -help' for a list of command-line options.
 
 [MONO 1: Errors & Serious Warnings]
 WVIDEO_running = 0
-I (20993) mouse-touch: GT911 at 0x14: 800x480; touch = left mouse
-Going into graphics mode...
-Initializing palette system...
+I (21074) mouse-touch: GT911 at 0x14: 800x480; touch = left mouse
+STACK before gr_init: 5408
+STACK after gr_init: 5408
+Going into graphics mode...STACK after gr_set_mode: 5408
 
-***ERROR*** A stack overflow in task main has been detected.
+Initializing palette system...
+PAL: enter, stack=5408
+PAL: cfopen
+PAL: cfopen returned 0x600ffde0, stack=5328
+PAL: cfilelength
+PAL: length=9472, stack=5328
+PAL: read palette
+PAL: palette read, stack=5328
+PAL: read fade table
+PAL: fade read, stack=5328
+PAL: close
+PAL: patch fade table
+PAL: done, stack=5328
+STACK after palette: 5328
+
+Initializing font system...STACK before gamefont_init: 5328
+STACK after gamefont_init: 3280
+E (26964) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:
+E (26964) task_wdt:  - IDLE0 (CPU 0)
+E (26964) task_wdt: Tasks currently running:
+E (26964) task_wdt: CPU 0: main
+E (26964) task_wdt: CPU 1: IDLE1
+E (26964) task_wdt: Print CPU 0 (current core) backtrace
 ```
 
 ### Current startup blocker
@@ -165,7 +198,7 @@ Insufficient available memory: original 7.5 MiB startup requirement not met.
 I (21023) descent: INFERNO returned 1
 ```
 
-This is a deliberate startup rejection, not a crash. The current memory check retains a 7.5 MiB free-memory threshold. By this stage, engine data, code, display buffers, Bluetooth, and other services already occupy part of the available RAM.
+Now halting in piggy_init, which is where the BITMAPS.BIN file gets processed and the BITMAPS.TBL is built.
 
 The next step is to establish the engine's actual allocation requirements and adapt the check accordingly, while accounting for the very limited internal heap. Passing or bypassing that check alone would not establish that the game fits or runs correctly.
 
