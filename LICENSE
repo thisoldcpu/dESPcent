@@ -1,0 +1,54 @@
+dESPcent licensing notice
+========================
+dESPcent contains material under different licenses. This notice identifies
+their scope; it does not replace or override the licenses of others. The
+repository and firmware as a whole are NOT licensed solely under MIT,
+Apache-2.0, or the GNU GPL.
+1. Original Descent code and adaptations
+---------------------------------------
+The original Parallax Software Corporation code, including adaptations of
+that code in this project, remains subject to the original Parallax terms
+reproduced in LICENSES/LicenseRef-Parallax-Descent.txt. Those terms restrict
+use to non-commercial, royalty- or revenue-free purposes.
+Changing language, platform, filename, or implementation does not by itself
+remove those terms. Preserve the original copyright and license notices.
+No permission to use Parallax code for revenue-bearing purposes is granted
+by dESPcent. Commercial permission must come from the relevant rights holder.
+2. Independently authored dESPcent software
+-----------------------------------------
+To the extent the dESPcent authors hold the applicable rights, independently
+authored dESPcent source code, build scripts, tests, and accompanying software
+documentation are licensed under the MIT License in LICENSES/MIT.txt, unless
+otherwise identified in the material or its accompanying notices.
+This grant excludes Parallax code, adaptations of Parallax code, third-party
+material, game assets, and the other excluded material described below. A
+missing notice, lowercase filename, or location in a particular directory
+does not establish independent authorship or erase an upstream license.
+The MIT grant permits reuse of the covered independent material, including
+commercial reuse. It does not authorize commercial use of the combined
+Descent-derived firmware or override restrictions on other included material.
+3. Third-party software
+-----------------------
+Third-party software retains its own copyright, license conditions, and
+disclaimers. See THIRD_PARTY_NOTICES.md and the notices supplied with each
+component and dependency. Preserve all notices required by those licenses,
+including notices required when distributing binaries.
+4. Game data and other excluded material
+---------------------------------------
+No rights to Descent game data, disc images, artwork, music, sound recordings,
+fonts, levels, or other third-party assets are granted by this project.
+Users must obtain the necessary rights to the data they use. The ability to
+read or extract an archive or disc image does not grant redistribution rights.
+Photographs, screenshots, videos, hardware design files, and other non-software
+material are not covered by the MIT grant above unless separately identified
+as such. Their inclusion does not transfer rights in depicted third-party
+material. No trademark rights or endorsement are granted by this notice.
+5. Scope and disclaimers
+-----------------------
+Copyright remains with the respective rights holders. Each applicable
+license's conditions and warranty/liability provisions govern its material.
+This notice grants no rights that the dESPcent authors do not hold, and does
+not relicense another contributor's material without their authorization.
+When redistributing, include this notice and the applicable license texts and
+attributions. If provenance or licensing of a component is unclear, establish
+its applicable terms rather than assuming the MIT grant covers it.
