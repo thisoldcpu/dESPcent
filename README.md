@@ -36,6 +36,10 @@ The supplied hardware log confirms that dESPcent:
 ![Descent logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_logo.jpg?raw=true)
 *The original Descent logo on the ESP32-S3 as the native startup sequence continues.*
 
+![DOS-style hardware setup screen.](https://github.com/user-attachments/assets/425561aa-bea6-4958-85b6-7b98dcaeb72d?raw=true)
+*A DOS-style hardware setup screen, inspired by the original Descent ASCII setup program.*
+
+
 ```
 PS C:\Projects\dESPcent> $env:IDF_PATH = 'C:\esp\v6.0.1\esp-idf';
 PS C:\Projects\dESPcent>  & 'C:\Espressif\tools\python\v6.0.1\venv\Scripts\python.exe' 'C:\esp\v6.0.1\esp-idf\tools\idf_monitor.py' -p COM3 -b 115200 --toolchain-prefix xtensa-esp32s3-elf- --make '''C:\Espressif\tools\python\v6.0.1\venv\Scripts\python.exe'' ''C:\esp\v6.0.1\esp-idf\tools\idf.py''' --target esp32s3 'c:\Projects\dESPcent\build\dESPcent.elf'
