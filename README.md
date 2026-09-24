@@ -156,60 +156,144 @@ The cockpit and HUD render coherently, which confirms that the engine is well pa
 
 ## Goals
 
-- Run the original Descent engine natively on ESP32-S3.
-- Preserve its fixed-point mathematics, software renderer, and gameplay behavior where practical.
-- Replace DOS-specific hardware access with ESP-IDF implementations.
-- Preserve original engine contracts instead of rewriting subsystems around the ESP32.
-- Use internal RAM and PSRAM according to measured requirements.
-- Load game data from SD storage.
-- Support gamepad controls, sound, and music.
-- Render at a practical internal resolution and scale to the 800×480 panel.
-- Keep the result recognizable as a port of Descent rather than a ground-up reimplementation.
+<p align="center">
+  <strong>Original engine. Native ESP32-S3. No PC underneath it.</strong><br>
+  <sub>Preserve Descent's behavior and architecture, replace only the hardware and operating-system contracts that no longer exist.</sub>
+</p>
+
+<br>
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### Preserve
+
+Keep the original fixed-point mathematics, software renderer, game logic, data formats, and engine contracts wherever practical.
+
+This is a **port of Descent**, not a ground-up recreation.
+
+</td>
+<td width="33%" valign="top">
+
+### Replace
+
+Translate the machine underneath it:
+
+- DOS and BIOS services → ESP-IDF
+- VGA framebuffer/DAC → indexed framebuffer + RGB panel
+- DOS input → BLE HID / touch
+- DOS audio hardware → I²S
+- local filesystem → SD/FAT
+
+</td>
+<td width="33%" valign="top">
+
+### Measure
+
+Let the ESP32-S3 tell us where the limits are.
+
+Use internal SRAM and PSRAM deliberately, preserve correctness first, and optimize rendering, memory, audio, and I/O from actual measurements rather than assumptions.
+
+</td>
+</tr>
+</table>
+
+> **Porting rule:** if the original engine has a contract, reproduce that contract before changing the engine around it.
+
+The practical target is the original **320×200 indexed renderer**, presented at **2× nearest-neighbor scale as 640×400** and centered on the CrowPanel's 800×480 RGB display.
+
+Controller input, digital sound, SD-based game data, and the original menu/briefing/gameplay flow are all intended to remain recognizably Descent.
+
+---
 
 ## Target Hardware
 
-| Component | Current target or prototype |
+<p align="center">
+  <strong>Current reference platform</strong><br>
+  <sub>Elecrow CrowPanel 7-inch HMI V3.0 · ESP32-S3 · 8 MB PSRAM · 800×480 RGB</sub>
+</p>
+
+### Core Platform
+
+| Component | Specification |
 | --- | --- |
-| Board | Elecrow CrowPanel 7-inch HMI, V3.0 |
-| Processor | Dual-core ESP32-S3, configured at 240 MHz |
-| Memory | Internal SRAM plus 8 MB external octal PSRAM, configured at 80 MHz |
-| Flash | 4 MB, configured for QIO at 80 MHz |
-| Storage | FAT-formatted SD card over SPI |
-| Display | 800×480 RGB panel, RGB565 scanout |
-| Touch | GT911 capacitive controller; V3.0 startup uses the PCA9557 I²C expander |
-| Audio hardware | NS4168 amplifier with I²S digital input |
-| Wireless controller | BLE Xbox Wireless Controller; decoder targets model 1914 |
-| Prototype battery | MakerFocus 3.7 V, 3,700 mAh battery |
-| Battery gauge | Adafruit LC709203F breakout over I²C |
+| **Board** | Elecrow CrowPanel 7-inch HMI, V3.0 |
+| **Processor** | Dual-core ESP32-S3, configured at 240 MHz |
+| **Memory** | Internal SRAM + 8 MB external octal PSRAM at 80 MHz |
+| **Flash** | 4 MB QIO at 80 MHz |
+| **Storage** | FAT-formatted SD card over SPI |
 
-![Rear of the prototype, showing the MakerFocus 3700 mAh battery and Adafruit LC709203F fuel gauge.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_proto_0.1_rear.jpg?raw=true)
+### Display & Input
 
-The battery and gauge are additions to this prototype. Their presence does not establish battery runtime, which has not yet been measured.
-
-### Peripheral connections
-
-| Interface | GPIO assignment |
+| Component | Specification |
 | --- | --- |
-| SD MOSI / MISO / SCLK / CS | 11 / 13 / 12 / 10 |
-| I²C SDA / SCL | 19 / 20 |
-| I²S data out / LRCLK / BCLK | 17 / 18 / 42 |
-| LCD backlight | 2 |
+| **Display** | 800×480 RGB panel, RGB565 scanout |
+| **Engine framebuffer** | Original 320×200 indexed-color surface |
+| **Presentation** | 2× nearest-neighbor → 640×400, centered at 80×40 |
+| **Touch** | GT911 capacitive controller via PCA9557 on V3.0 |
+| **Controller** | BLE Xbox Wireless Controller; decoder targets model 1914 |
 
-Other ESP32-S3 boards may be supported later, but this is currently a board-specific port.
+### Audio & Prototype Power
+
+| Component | Specification |
+| --- | --- |
+| **Audio** | I²S digital output through NS4168 amplifier |
+| **Prototype battery** | MakerFocus 3.7 V, 3,700 mAh |
+| **Battery gauge** | Adafruit LC709203F over I²C |
+
+<p align="center">
+  <img width="900" alt="Rear of the dESPcent prototype showing battery and fuel gauge hardware" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_proto_0.1_rear.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>Rear of the current prototype, showing the MakerFocus 3,700 mAh battery and Adafruit LC709203F fuel gauge.</em>
+</p>
+
+The battery system is part of the current prototype rather than a requirement of dESPcent. Runtime on battery has not yet been characterized.
+
+### Peripheral Connections
+
+| Interface | GPIO |
+| --- | ---: |
+| **SD** — MOSI / MISO / SCLK / CS | 11 / 13 / 12 / 10 |
+| **I²C** — SDA / SCL | 19 / 20 |
+| **I²S** — DOUT / LRCLK / BCLK | 17 / 18 / 42 |
+| **LCD backlight** | 2 |
+
+<p align="center">
+  <sub>The port is currently board-specific. Additional ESP32-S3 targets can come later once the reference platform is stable.</sub>
+</p>
 
 ## Memory and Display Strategy
 
 Having 8 MB of PSRAM does not mean that 8 MB is available to the game. Large engine arrays, firmware instructions and read-only data, display buffers, Bluetooth allocations, graphics state, sound data, and loaded polygon models all compete for that memory. Internal RAM is still required for task stacks, DMA-capable allocations, and other ESP-IDF resources.
-
-The current display configuration uses a **single 800×480 RGB565 framebuffer**. Earlier builds used two full RGB565 buffers; dropping to one recovered approximately 768 KB of PSRAM and was the change that allowed startup to continue through the full polygon-model load and into the game.
 
 Current major graphics allocations include:
 
 | Buffer | Size |
 | --- | ---: |
 | One 800×480 RGB565 panel framebuffer | 768,000 bytes |
-| 800×480 indexed Descent framebuffer | 384,000 bytes |
+| 320×200 indexed Descent framebuffer | 64,000 bytes |
 | Two internal RGB DMA bounce buffers, 10 lines each | 32,000 bytes total |
+
+The original Descent renderer remains palette-indexed at its native **320×200** resolution. On DOS/VGA hardware, the framebuffer contained 8-bit palette indices and the VGA DAC performed color lookup during scanout.
+
+The ESP32 has no VGA DAC, so dESPcent preserves the original indexed framebuffer and maintains a software equivalent of the DAC palette. At presentation time, the 320×200 image is converted to RGB565, scaled **2× nearest-neighbor to 640×400**, and centered at **80×40** inside the panel's 800×480 framebuffer.
+
+This keeps the original renderer, UI layout, fonts, cockpit, menus, and briefing screens operating in their native coordinate system while moving panel-specific scaling entirely into the ESP32 graphics backend.
+
+The palette state also remains faithful to the original architecture: the engine's retained palette is kept separate from the currently displayed software-DAC palette.
+
+The current asset load reaches approximately:
+
+- **1.29 MB** reserved for `SoundBits`.
+- **2.00 MB** reserved for the bitmap cache.
+- **78 of 85** polygon-model slots populated during the current registered-data startup path.
+
+Those numbers are diagnostic snapshots, not fixed requirements.
+
+At the configured 15 MHz pixel clock and 928×525 total timing, the calculated panel refresh rate is approximately **30.79 Hz**. Active RGB565 scanout payload is approximately **23.65 MB/s**, before rendering writes and other memory traffic. This is a display timing calculation, not a measured game frame rate.
 
 The original Descent renderer remains palette-indexed. On DOS/VGA hardware, the framebuffer contained 8-bit palette indices and the VGA DAC performed color lookup during scanout. The ESP32 has no VGA DAC, so dESPcent preserves the indexed framebuffer and maintains a software equivalent of the DAC palette. Presentation converts the indexed image to the panel's RGB565 framebuffer.
 
