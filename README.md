@@ -58,23 +58,53 @@ The cockpit and HUD render coherently, which confirms that the engine is well pa
 
 ## Startup and Rendering Milestones
 
-![dESPcent startup POST verifying Descent data on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifying.jpg?raw=true)
-*The animated POST verifies SD data while hardware status remains visible, including live battery state.*
+<p align="center">
+  <img width="900" alt="dESPcent startup POST verifying Descent data on the CrowPanel" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifying.jpg?raw=true" />
+</p>
 
-![dESPcent startup POST complete and ready to launch.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifed.jpg?raw=true)
-*Verification complete and ready to launch. Touch input hands control off to the original Descent startup sequence.*
+<p align="center">
+  <em>The animated POST verifies SD data while hardware status remains visible, including live battery state.</em>
+</p>
 
-![Interplay logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_interplay_logo.jpg?raw=true)
-*The software renderer outputs the Interplay logo directly to the ESP32-S3 RGB panel.*
+<p align="center">
+  <img width="900" alt="dESPcent startup POST complete and ready to launch" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifed.jpg?raw=true" />
+</p>
 
-![Parallax Software logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_parallax_logo.jpg?raw=true)
-*The Parallax Software logo sequence rendered on the CrowPanel.*
+<p align="center">
+  <em>Verification complete and ready to launch. Touch input hands control off to the original Descent startup sequence.</em>
+</p>
 
-![Descent logo rendered on the CrowPanel.](https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_logo.jpg?raw=true)
-*The original Descent logo on the ESP32-S3 as the native startup sequence continues.*
+<p align="center">
+  <img width="900" alt="Interplay logo rendered by dESPcent on the CrowPanel" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_interplay_logo.jpg?raw=true" />
+</p>
 
-![DOS-style hardware setup screen.](https://github.com/user-attachments/assets/425561aa-bea6-4958-85b6-7b98dcaeb72d?raw=true)
-*A DOS-style hardware setup screen inspired by the original Descent ASCII setup program.*
+<p align="center">
+  <em>The software renderer outputs the Interplay logo directly to the ESP32-S3 RGB panel.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="Parallax Software logo rendered by dESPcent on the CrowPanel" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_parallax_logo.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The Parallax Software logo sequence rendered natively on the CrowPanel.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="Descent title screen rendered by dESPcent on the CrowPanel" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_descent_logo.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The original Descent title screen as the native startup sequence continues on the ESP32-S3.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent DOS-style hardware setup screen" src="https://github.com/user-attachments/assets/425561aa-bea6-4958-85b6-7b98dcaeb72d?raw=true" />
+</p>
+
+<p align="center">
+  <em>A DOS-style hardware setup screen inspired by the original Descent ASCII setup program.</em>
+</p>
 
 <p align="center">
   <img width="900" alt="dESPcent pilot-name screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/e19f119b-408c-474e-84ac-e4683a3767ea" />
@@ -123,7 +153,6 @@ The cockpit and HUD render coherently, which confirms that the engine is well pa
 <p align="center">
   <em>First in-game cockpit frame on the ESP32-S3. The game loop is active, player and robot physics are running, and the original software renderer is producing the scene natively.</em>
 </p>
-
 
 ## Goals
 
