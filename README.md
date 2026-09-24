@@ -76,6 +76,55 @@ The cockpit and HUD render coherently, which confirms that the engine is well pa
 ![DOS-style hardware setup screen.](https://github.com/user-attachments/assets/425561aa-bea6-4958-85b6-7b98dcaeb72d?raw=true)
 *A DOS-style hardware setup screen inspired by the original Descent ASCII setup program.*
 
+<p align="center">
+  <img width="900" alt="dESPcent pilot-name screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/e19f119b-408c-474e-84ac-e4683a3767ea" />
+</p>
+
+<p align="center">
+  <em>The original pilot-name flow running natively on the ESP32-S3. Existing configuration data is already being read by the engine.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent joystick calibration screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/4404d314-385b-4ad4-b716-1e80a82e5c5e" />
+</p>
+
+<p align="center">
+  <em>Descent's original joystick-calibration path, reached through the ported controller/input layer.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent main menu on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/a7188166-6f86-40c6-bd52-1e05daa156ea" />
+</p>
+
+<p align="center">
+  <em>The original Descent main menu, fully visible and controller-navigable on the CrowPanel.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent mission briefing on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/e9dd06a0-48b5-4424-abcb-f401a3160feb" />
+</p>
+
+<p align="center">
+  <em>The mission briefing system running on hardware, including original backgrounds, palette effects, timed text, and page flow.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent character briefing screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/02d75b06-1713-40d5-bdb0-3d621c8f3e4f" />
+</p>
+
+<p align="center">
+  <em>A later briefing page with character artwork and scrolling mission text. The original 320×200 presentation is scaled 2× to 640×400 and centered on the 800×480 panel.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/f1430721-5c5c-406a-8a5a-5e5b68b52a34" />
+</p>
+
+<p align="center">
+  <em>First in-game cockpit frame on the ESP32-S3. The game loop is active, player and robot physics are running, and the original software renderer is producing the scene natively.</em>
+</p>
+
+
 ## Goals
 
 - Run the original Descent engine natively on ESP32-S3.
