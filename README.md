@@ -8,9 +8,25 @@ The current target is an **Elecrow CrowPanel 7-inch HMI, V3.0**, with an **ESP32
 
 ## Current Status
 
-**It is now reaching the game loop on real ESP32-S3 hardware.**
+**Gameplay is working on real ESP32-S3 hardware, demos run to completion, and a player can play a full run now.**
 
-dESPcent has progressed beyond startup and asset loading. The current build can boot the original engine, navigate the menu flow with an Xbox controller, run the Descent briefing system, start a new game, and render the first in-game cockpit frame while player and robot simulation is active.
+*Last updated: September 26, 2026. Experimental development build.*
+
+**Main menu, item by item:**
+
+- [x] New Game
+- [ ] Load Game...
+- [ ] Multiplayer...
+- [x] Options...
+- [ ] Change Pilots...
+- [x] View Demo...
+- [x] High Scores
+- [x] Credits
+- [x] Quit
+  - [ ] Load Level...
+  - [ ] Play Song
+
+dESPcent now runs the original engine through startup, menus, mission briefings, and into working gameplay. Demo playback also runs to completion. Current work is focused on two things: tracking down the project's last standing heap-corruption bug (internally tracked as "Issue 3"), and systematically checking the remaining screens and adapting their display updates and wait loops to the ESP32 graphics backend and FreeRTOS scheduler.
 
 The current hardware build has demonstrated:
 
@@ -30,31 +46,21 @@ The current hardware build has demonstrated:
 - Mission briefing backgrounds, text, timing, and page transitions.
 - Controller input translated into the legacy Descent menu/title/briefing input paths.
 - Transition from menus and briefings into the actual game loop.
-- First in-game cockpit/HUD frame rendered on hardware.
+- In-game cockpit/HUD and level rendering during working gameplay.
 - Active player and robot physics execution.
+- Demo playback running to completion.
 
-This is not yet a playable port. The current blocker is now inside the actual game simulation rather than startup infrastructure.
+### Current focus: chasing the last heap-corruption bug ("Issue 3")
 
-### Current blocker: segment/FVI validity
+The project's long-standing intermittent PSRAM heap-corruption crash, tracked internally as "Issue 3," saw its first real progress today. A byte-level guard system was added around every canvas allocated by `gr_create_canvas()` — the 320×200 offscreen render target, the HUD gauges, the weapon reticle, and others — on top of the existing guard around the main indexed framebuffer. Combined with two other fixes made the same day (a double-free in `IFF.cpp`'s bitmap loader that had been silently masked for a long time by an unsafe `free()` macro in this port's own `LIB/MEM.H`, and the removal of that macro itself), both View Demo and a full New Game session ran for hundreds of frames with no crash — a first for this project's debugging history. Both runs were stopped manually, not crashed.
 
-The game reaches level startup and begins running physics, but the player and multiple robot objects are repeatedly rejected as being outside their assigned segments:
+The new canvas guards also caught something during those same runs: a single stray byte written exactly one byte before the start of the offscreen render target's pixel data, at the same offset every time, though at different frame counts and player positions across runs. That's the signature of a deterministic off-by-one — most likely an unclamped coordinate at the edge of a scanline or a blit run — rather than random corruption, and in both runs it didn't happen to land anywhere load-bearing. It's the first byte-level lead this investigation has had. Tracing the exact write site is next; leading suspects are the 3D scanline rasterizer and the cockpit's `gr_ibitblt()` run-list blitter, which has no bounds checking by design.
 
-```text
-Warning: object 0 not in given seg!
-Warning: Bad p0 in physics!  Object = 0, type = 4 [PLAYER  ]
-Warning: object 32 not in given seg!
-Warning: Bad p0 in physics!  Object = 32, type = 2 [ROBOT   ]
-Warning: object 37 not in given seg!
-Warning: Bad p0 in physics!  Object = 37, type = 2 [ROBOT   ]
-```
+Separately, a menu-side scheduler bug was found and fixed: reaching "View High Scores" from the main menu without a new high score to show had no yield point at all in its input-polling loop, which pegged CPU0 and tripped the watchdog every five seconds. That fix is committed but not yet confirmed on hardware.
 
-The resulting exhaustive FVI/segment searches can also drive recursion close to the task stack limit:
+Some original DOS screen loops still need explicit display updates and scheduler yields of their own. On this port, drawing into the indexed screen buffer must be followed by `gr_present()` to update the panel, and polling/timing loops need `vTaskDelay(...)` so other FreeRTOS tasks can run. The credits screen was fixed this way earlier and still needs verification on hardware; remaining screens are being checked systematically for the same omission.
 
-```text
-In fvi_sub, stack left is < 1k !
-```
-
-The cockpit and HUD render coherently, which confirms that the engine is well past startup and actively executing the game loop. The next major task is to determine why loaded object positions and segment geometry disagree on the ESP32 port.
+Working gameplay, completed demos, and now hundreds-of-frames-stable runs are milestones, not a claim that every screen, mission, or feature has been validated.
 
 ## Startup and Rendering Milestones
 
@@ -147,11 +153,19 @@ The cockpit and HUD render coherently, which confirms that the engine is well pa
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/f1430721-5c5c-406a-8a5a-5e5b68b52a34" />
+  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/942f31d8-57b0-4d3b-bdc2-a310245a6641" />
 </p>
 
 <p align="center">
   <em>First in-game cockpit frame on the ESP32-S3. The game loop is active, player and robot physics are running, and the original software renderer is producing the scene natively.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/021ca1c8-2569-4225-b3e5-d951bc0e18df" />
+</p>
+
+<p align="center">
+  <em>First demo playback cockpit frame on the ESP32-S3. The game loop is active and playback is running.</em>
 </p>
 
 ## Goals
@@ -295,29 +309,6 @@ Those numbers are diagnostic snapshots, not fixed requirements.
 
 At the configured 15 MHz pixel clock and 928×525 total timing, the calculated panel refresh rate is approximately **30.79 Hz**. Active RGB565 scanout payload is approximately **23.65 MB/s**, before rendering writes and other memory traffic. This is a display timing calculation, not a measured game frame rate.
 
-The original Descent renderer remains palette-indexed. On DOS/VGA hardware, the framebuffer contained 8-bit palette indices and the VGA DAC performed color lookup during scanout. The ESP32 has no VGA DAC, so dESPcent preserves the indexed framebuffer and maintains a software equivalent of the DAC palette. Presentation converts the indexed image to the panel's RGB565 framebuffer.
-
-This distinction matters: the original engine keeps its reference palette separate from the palette currently visible in the VGA DAC. The ESP32 graphics backend now preserves that separation rather than treating one array as both engine state and display state.
-
-The current asset load reaches approximately:
-
-- **1.29 MB** reserved for `SoundBits`.
-- **2.00 MB** reserved for the bitmap cache.
-- **78 of 85** polygon-model slots populated during the current registered-data startup path.
-- Roughly **700 KB of free PSRAM** remaining after game data initialization in recent hardware runs.
-
-Those numbers are diagnostic snapshots, not fixed requirements.
-
-At the configured 15 MHz pixel clock and 928×525 total timing, the calculated panel refresh rate is approximately **30.79 Hz**. Active RGB565 pixel payload is approximately **23.65 MB/s**, before rendering writes and other memory traffic. This is a display timing calculation, not a measured game frame rate.
-
-### Planned lower-resolution rendering
-
-The current graphics implementation uses an 800×480 indexed backing buffer.
-
-A proposed future path is a **384×240** engine framebuffer scaled 2× to **768×480**, with **16-pixel side borders**. That is not implemented yet.
-
-A 384×240 indexed buffer would require 92,160 bytes and substantially reduce the number of software-rendered engine pixels. It would not, by itself, remove the full-size RGB output buffer or the panel's continuous scanout bandwidth.
-
 ## Controls
 
 BLE controller support has moved beyond connection testing.
@@ -328,7 +319,7 @@ The current Xbox controller path is integrated into Descent's joystick/menu cont
 - **B** → Escape/back.
 - **D-pad** → menu navigation.
 
-The engine's joystick configuration and calibration paths are active. In-game 6DOF control, axis behavior, deadzones, and final bindings still need validation once the current geometry/FVI blocker is resolved.
+The engine's joystick configuration and calibration paths are active, and gameplay is now working. Full validation of 6DOF control, axis behavior, deadzones, and final bindings remains part of ongoing hardware testing.
 
 The GT911 also has a touch-backed mouse implementation. Touch currently participates in startup handoff; broader menu/game use is still secondary to the controller path.
 
@@ -373,8 +364,11 @@ The project has crossed enough startup milestones that the remaining work is inc
 
 Current known incomplete areas include:
 
-- Object/segment geometry and FVI validity during gameplay.
-- FVI recursion/stack pressure triggered by the current geometry mismatch.
+- Root-causing the remaining "Issue 3" off-by-one write into the offscreen canvas. The corruption is now localized to a specific 1-byte, per-frame signature; the exact write site is not yet traced.
+- Hardware confirmation of the `scores_view()` scheduler-yield fix (the "View High Scores" watchdog timeout).
+- A tree-wide sweep for other instances of the double-free pattern found in `IFF.cpp` — an explicit `free()` immediately followed by a cleanup helper that also frees the same buffer.
+- Remaining screen loops that need explicit `gr_present()` calls or FreeRTOS scheduler yields.
+- Hardware verification of the credits presentation fix and other screen-specific changes.
 - Final in-game controller axis behavior and bindings.
 - Full audio playback validation.
 - Player/config persistence cleanup. A present `.PLR` file does not yet always produce the expected Select Pilot flow, and controller-choice persistence is still being restored.
@@ -401,7 +395,7 @@ The files under [docs](docs) record individual porting steps and checks. Some de
 
 The source baseline is the original **Descent 1 v1.5** release, rather than D1X or DXX-Rebirth. Platform-specific code is being adapted or replaced for ESP32-S3 while retaining the original engine structure and notices.
 
-The ported Parallax source files carry a license notice restricting use to non-commercial, royalty- or revenue-free purposes. The project should not be described as having a blanket permissive open-source license. Applicable source and third-party notices must be retained; consolidated distribution licensing documentation remains to be completed.
+The ported Parallax source files carry a license notice restricting use to non-commercial, royalty- or revenue-free purposes. The project should not be described as having a blanket permissive open-source license. Independently authored dESPcent software is offered under MIT within the scope defined by the root [LICENSE](LICENSE). Parallax adaptations and third-party components retain their existing terms. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [LICENSES](LICENSES) for the identified upstream notices and full license texts.
 
 Game data is separate from the source release and is not made freely distributable by the availability of engine source.
 
@@ -411,6 +405,6 @@ Game data is separate from the source release and is not made freely distributab
 
 Because an ESP32-S3 running Descent would be ridiculous.
 
-And now it is rendering the cockpit, running player and robot physics, and trying to put the player inside the mine.
+And now gameplay works, demos run to completion, and it's starting to hold up under sustained play.
 
-Next comes making the mine agree.
+Next: track down the last heap-corruption bug, finish the remaining screens, refine the controls, and measure how it holds up in the mine.
