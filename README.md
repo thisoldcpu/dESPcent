@@ -8,25 +8,25 @@ The current target is an **Elecrow CrowPanel 7-inch HMI, V3.0**, with an **ESP32
 
 ## Current Status
 
-**Gameplay is working on real ESP32-S3 hardware, demos run to completion, and a player can play a full run now.**
+**Gameplay is working on real ESP32-S3 hardware: a full campaign run from Mission 0 to the end has been completed, and demo playback runs to completion.**
 
-*Last updated: September 26, 2026. Experimental development build.*
+*Last updated: September 27, 2026. Experimental development build.*
 
 **Main menu, item by item:**
 
-- [x] New Game
-- [ ] Load Game...
-- [ ] Multiplayer...
+- [x] New Game confirmed; a full campaign has been played from Mission 0 to the end.
+- [ ] Load Game... not yet confirmed until Save Game is implemented. Save data is being handled with a custom SafeSaveData system because the user can initiate a reset at any time.
+- [ ] Multiplayer... reaches one level in (Start a Network Game / Join a Network Game / Modem-Serial Game) and exits cleanly, but none of those options do anything yet. Multiplayer backend candidates are being considered, including ESP-NOW.
 - [x] Options...
-- [ ] Change Pilots...
+- [x] Change Pilots...
 - [x] View Demo...
-- [x] High Scores
+- [x] High Scores...
 - [x] Credits
 - [x] Quit
-  - [ ] Load Level...
-  - [ ] Play Song
+  - [x] Load Level... implemented via the on-screen keyboard. BLE keyboard support is being considered.
+  - [ ] Play Song... not yet viable without a music backend.
 
-dESPcent now runs the original engine through startup, menus, mission briefings, and into working gameplay. Demo playback also runs to completion. Current work is focused on two things: tracking down the project's last standing heap-corruption bug (internally tracked as "Issue 3"), and systematically checking the remaining screens and adapting their display updates and wait loops to the ESP32 graphics backend and FreeRTOS scheduler.
+dESPcent now runs the original engine through startup, menus, mission briefings, and into working gameplay. Demo playback also runs to completion. Current work is focused on two things: systematically checking the remaining screens and adapting their display updates and wait loops to the ESP32 graphics backend and FreeRTOS scheduler, and optimizing performance.
 
 The current hardware build has demonstrated:
 
@@ -49,20 +49,18 @@ The current hardware build has demonstrated:
 - In-game cockpit/HUD and level rendering during working gameplay.
 - Active player and robot physics execution.
 - Demo playback running to completion.
+- An on-screen keyboard (gamepad grid + GT911 tap) for pilot-callsign and level-number entry, confirmed working on hardware.
+- Change Pilots, confirmed working on hardware.
 
-### Current focus: chasing the last heap-corruption bug ("Issue 3")
+### Current Tasks
 
-The project's long-standing intermittent PSRAM heap-corruption crash, tracked internally as "Issue 3," saw its first real progress today. A byte-level guard system was added around every canvas allocated by `gr_create_canvas()` — the 320×200 offscreen render target, the HUD gauges, the weapon reticle, and others — on top of the existing guard around the main indexed framebuffer. Combined with two other fixes made the same day (a double-free in `IFF.cpp`'s bitmap loader that had been silently masked for a long time by an unsafe `free()` macro in this port's own `LIB/MEM.H`, and the removal of that macro itself), both View Demo and a full New Game session ran for hundreds of frames with no crash — a first for this project's debugging history. Both runs were stopped manually, not crashed.
-
-The new canvas guards also caught something during those same runs: a single stray byte written exactly one byte before the start of the offscreen render target's pixel data, at the same offset every time, though at different frame counts and player positions across runs. That's the signature of a deterministic off-by-one — most likely an unclamped coordinate at the edge of a scanline or a blit run — rather than random corruption, and in both runs it didn't happen to land anywhere load-bearing. It's the first byte-level lead this investigation has had. Tracing the exact write site is next; leading suspects are the 3D scanline rasterizer and the cockpit's `gr_ibitblt()` run-list blitter, which has no bounds checking by design.
-
-Separately, a menu-side scheduler bug was found and fixed: reaching "View High Scores" from the main menu without a new high score to show had no yield point at all in its input-polling loop, which pegged CPU0 and tripped the watchdog every five seconds. That fix is committed but not yet confirmed on hardware.
-
-Some original DOS screen loops still need explicit display updates and scheduler yields of their own. On this port, drawing into the indexed screen buffer must be followed by `gr_present()` to update the panel, and polling/timing loops need `vTaskDelay(...)` so other FreeRTOS tasks can run. The credits screen was fixed this way earlier and still needs verification on hardware; remaining screens are being checked systematically for the same omission.
+Some original DOS screen loops still need explicit display updates and scheduler yields of their own. On this port, drawing into the indexed screen buffer must be followed by `gr_present()` to update the panel, and polling/timing loops need `vTaskDelay(...)` so other FreeRTOS tasks can run. 
 
 Working gameplay, completed demos, and now hundreds-of-frames-stable runs are milestones, not a claim that every screen, mission, or feature has been validated.
 
-## Startup and Rendering Milestones
+## Screens & Menus
+
+### Startup
 
 <p align="center">
   <img width="900" alt="dESPcent startup POST verifying Descent data on the CrowPanel" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_post_verifying.jpg?raw=true" />
@@ -104,32 +102,84 @@ Working gameplay, completed demos, and now hundreds-of-frames-stable runs are mi
   <em>The original Descent title screen as the native startup sequence continues on the ESP32-S3.</em>
 </p>
 
+### Hardware setup & calibration
+
 <p align="center">
-  <img width="900" alt="dESPcent DOS-style hardware setup screen" src="https://github.com/user-attachments/assets/425561aa-bea6-4958-85b6-7b98dcaeb72d?raw=true" />
+  <img width="900" alt="dESPcent DOS-style hardware setup screen: system info page" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_system_info.jpg?raw=true" />
 </p>
 
 <p align="center">
-  <em>A DOS-style hardware setup screen inspired by the original Descent ASCII setup program.</em>
+  <em>The DOS-style hardware setup screen's System Info page, reporting board and firmware identity from within the original ASCII-style setup program.</em>
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent pilot-name screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/e19f119b-408c-474e-84ac-e4683a3767ea" />
+  <img width="900" alt="dESPcent DOS-style hardware setup screen: data page" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_data.jpg?raw=true" />
 </p>
 
 <p align="center">
-  <em>The original pilot-name flow running natively on the ESP32-S3. Existing configuration data is already being read by the engine.</em>
+  <em>The setup program's Data page, covering game-data paths and the archives detected on the SD card.</em>
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent joystick calibration screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/4404d314-385b-4ad4-b716-1e80a82e5c5e" />
+  <img width="900" alt="dESPcent DOS-style hardware setup screen: controller page" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_controller.jpg?raw=true" />
 </p>
 
 <p align="center">
-  <em>Descent's original joystick-calibration path, reached through the ported controller/input layer.</em>
+  <em>The setup program's Controller page, confirming the BLE gamepad binding before entering the game.</em>
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent main menu on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/a7188166-6f86-40c6-bd52-1e05daa156ea" />
+  <img width="900" alt="dESPcent joystick calibration screen: left stick deadzone" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_left_stick_dz.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>Descent's original joystick-calibration path, adapted to walk the BLE gamepad's left stick through its deadzone.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent joystick calibration screen: right stick deadzone" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_right_stick_dz.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The same calibration flow for the right stick.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent joystick calibration screen: trigger deadzone" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_trigger_dz.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>Trigger deadzone calibration, completing the calibration sequence on the BLE pad.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent DOS-style hardware setup screen: exit page" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_setup_exit.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>Exiting the setup program and handing control back to the game.</em>
+</p>
+
+### Pilot, menus, and briefings
+
+<p align="center">
+  <img width="900" alt="dESPcent Select Pilot screen listing saved .PLR files" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_pilot_select.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The Select Pilot screen, listing saved <code>.PLR</code> profiles read directly from the SD card.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent pilot callsign entry using the new on-screen keyboard" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_pilot_name_entry.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em><strong>New:</strong> typing a pilot callsign with the on-screen keyboard. The alphanumeric grid, navigable by gamepad or a GT911 tap, fills the one gap a DOS-only input model left on hardware with no physical keyboard.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent main menu on ESP32-S3 hardware" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_main_menu.jpg?raw=true" />
 </p>
 
 <p align="center">
@@ -137,7 +187,63 @@ Working gameplay, completed demos, and now hundreds-of-frames-stable runs are mi
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent mission briefing on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/e9dd06a0-48b5-4424-abcb-f401a3160feb" />
+  <img width="900" alt="dESPcent New Game mission-select screen" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_new_game_mission_select.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>New Game's mission-select list.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent New Game difficulty-select screen" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_new_game_difficulty_select.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>Difficulty selection, immediately before the mission briefing begins.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent Options menu on ESP32-S3 hardware" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_options_menu.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The Options menu, including the Sound FX volume slider verified end-to-end through the ESP32 I²S audio path.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent View Demo file list" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_view_demo_menu.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The View Demo file list.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent High Scores screen" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_high_scores.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The High Scores table.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent Credits screen" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_credits.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The credits screen.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent Quit confirmation dialog" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_quit_confirm.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>The Quit confirmation dialog.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent mission briefing on ESP32-S3 hardware" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_mission_briefing.jpg?raw=true" />
 </p>
 
 <p align="center">
@@ -145,7 +251,7 @@ Working gameplay, completed demos, and now hundreds-of-frames-stable runs are mi
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent character briefing screen on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/02d75b06-1713-40d5-bdb0-3d621c8f3e4f" />
+  <img width="900" alt="dESPcent character briefing screen on ESP32-S3 hardware" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_character_briefing.jpg?raw=true" />
 </p>
 
 <p align="center">
@@ -153,20 +259,101 @@ Working gameplay, completed demos, and now hundreds-of-frames-stable runs are mi
 </p>
 
 <p align="center">
-  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/942f31d8-57b0-4d3b-bdc2-a310245a6641" />
+  <img width="900" alt="dESPcent numeric on-screen keyboard entering a Load Level mission number" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_load_level_keyboard.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em><strong>New:</strong> the same on-screen keyboard module in its numeric-only layout, entering a mission number for Load Level.</em>
+</p>
+
+### Gameplay
+
+<p align="center">
+  <img width="900" alt="dESPcent in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_gameplay_cockpit.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>In-game cockpit and HUD during working gameplay. Player and robot physics active, original software renderer producing the scene natively.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent debug/performance overlay during gameplay" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_debug_overlay.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em><strong>New:</strong> the retuned debug/performance overlay. Shorter lines render faster, still covering frame timing, object counts, and memory.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent demo playback running to completion" src="https://github.com/thisoldcpu/dESPcent/blob/main/images/despcent_demo_playback.jpg?raw=true" />
+</p>
+
+<p align="center">
+  <em>Demo playback running to completion in the cockpit view.</em>
+</p>
+
+<details>
+<summary><strong>Archived screenshots (superseded by the gallery above)</strong></summary>
+
+These were the working images before this pass; several point at screens the gallery above now shows with a dedicated, on-disk photo instead (setup/calibration pages, pilot select, main menu, briefings, cockpit). Kept for reference rather than deleted.
+
+<p align="center">
+  <img width="900" alt="dESPcent DOS-style hardware setup screen (archived)" src="https://github.com/user-attachments/assets/425561aa-bea6-4958-85b6-7b98dcaeb72d?raw=true" />
+</p>
+
+<p align="center">
+  <em>A DOS-style hardware setup screen inspired by the original Descent ASCII setup program.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent pilot-name screen on ESP32-S3 hardware (archived)" src="https://github.com/user-attachments/assets/e19f119b-408c-474e-84ac-e4683a3767ea" />
+</p>
+
+<p align="center">
+  <em>The original pilot-name flow running natively on the ESP32-S3. Existing configuration data is already being read by the engine.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent joystick calibration screen on ESP32-S3 hardware (archived)" src="https://github.com/user-attachments/assets/4404d314-385b-4ad4-b716-1e80a82e5c5e" />
+</p>
+
+<p align="center">
+  <em>Descent's original joystick-calibration path, reached through the ported controller/input layer.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent main menu on ESP32-S3 hardware (archived)" src="https://github.com/user-attachments/assets/a7188166-6f86-40c6-bd52-1e05daa156ea" />
+</p>
+
+<p align="center">
+  <em>The original Descent main menu, fully visible and controller-navigable on the CrowPanel.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent mission briefing on ESP32-S3 hardware (archived)" src="https://github.com/user-attachments/assets/e9dd06a0-48b5-4424-abcb-f401a3160feb" />
+</p>
+
+<p align="center">
+  <em>The mission briefing system running on hardware, including original backgrounds, palette effects, timed text, and page flow.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent character briefing screen on ESP32-S3 hardware (archived)" src="https://github.com/user-attachments/assets/02d75b06-1713-40d5-bdb0-3d621c8f3e4f" />
+</p>
+
+<p align="center">
+  <em>A later briefing page with character artwork and scrolling mission text. The original 320×200 presentation is scaled 2× to 640×400 and centered on the 800×480 panel.</em>
+</p>
+
+<p align="center">
+  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware (archived)" src="https://github.com/user-attachments/assets/f1430721-5c5c-406a-8a5a-5e5b68b52a34" />
 </p>
 
 <p align="center">
   <em>First in-game cockpit frame on the ESP32-S3. The game loop is active, player and robot physics are running, and the original software renderer is producing the scene natively.</em>
 </p>
 
-<p align="center">
-  <img width="900" alt="dESPcent first in-game cockpit frame on ESP32-S3 hardware" src="https://github.com/user-attachments/assets/021ca1c8-2569-4225-b3e5-d951bc0e18df" />
-</p>
-
-<p align="center">
-  <em>First demo playback cockpit frame on the ESP32-S3. The game loop is active and playback is running.</em>
-</p>
+</details>
 
 ## Goals
 
@@ -270,9 +457,9 @@ The battery system is part of the current prototype rather than a requirement of
 
 | Interface | GPIO |
 | --- | ---: |
-| **SD** — MOSI / MISO / SCLK / CS | 11 / 13 / 12 / 10 |
-| **I²C** — SDA / SCL | 19 / 20 |
-| **I²S** — DOUT / LRCLK / BCLK | 17 / 18 / 42 |
+| **SD** - MOSI / MISO / SCLK / CS | 11 / 13 / 12 / 10 |
+| **I²C** - SDA / SCL | 19 / 20 |
+| **I²S** - DOUT / LRCLK / BCLK | 17 / 18 / 42 |
 | **LCD backlight** | 2 |
 
 <p align="center">
@@ -311,27 +498,49 @@ At the configured 15 MHz pixel clock and 928×525 total timing, the calculated p
 
 ## Controls
 
-BLE controller support has moved beyond connection testing.
+BLE controller support is confirmed on hardware, in full: a complete campaign run, Mission 0 to the end, was flown entirely with the Xbox Wireless Controller over BLE.
 
-The current Xbox controller path is integrated into Descent's joystick/menu contracts and has been demonstrated navigating menus and advancing title/briefing screens. Current logical mappings include:
+The Xbox controller path is integrated into Descent's joystick/menu contracts and handles both menu navigation and in-flight controls:
 
 - **A / Start** → Enter/confirm in menu-style interfaces.
 - **B** → Escape/back.
 - **D-pad** → menu navigation.
 
-The engine's joystick configuration and calibration paths are active, and gameplay is now working. Full validation of 6DOF control, axis behavior, deadzones, and final bindings remains part of ongoing hardware testing.
+In gameplay, the right stick controls yaw/pitch, the left stick controls horizontal/vertical slide, RT/LT give proportional forward/reverse thrust, and RB/LB bank. A/B fire primary/secondary weapons, X launches a flare, Y cycles primary weapons, L3 holds afterburner-style boost thrust, and R3 drops a proximity bomb. D-pad cycles weapons, Start pauses, View/Back opens board setup, and Share prints a diagnostic dump to serial and toggles the debug overlay.
 
-The GT911 also has a touch-backed mouse implementation. Touch currently participates in startup handoff; broader menu/game use is still secondary to the controller path.
+The GT911 touch-backed mouse implementation is also confirmed working: a tap registers as a left mouse click anywhere the engine expects one, including dismissing menus and driving the on-screen keyboard.
 
 ## Audio
 
-Digital sound output is working on hardware.
+Digital sound is working on hardware.
 
-The original sound tables and sample data load successfully. Recent startup logs report 108 sound slots in use and roughly 404 KB of actual sample payload selected from the larger sound reservation.
+The original Descent sound tables and sample data load successfully. Current builds report 108 sound slots in use and roughly 404 KB of actual sample payload selected from the larger sound reservation.
 
-The ESP32 I²S backend is active through the CrowPanel's NS4168 amplifier and external speakers. The Descent Sound FX volume slider has been verified to play its test sound at the selected volume levels, confirming end-to-end sample playback and volume scaling through the ESP32 audio path.
+dESPcent replaces the original DOS sound-hardware backend with an ESP32 software mixer and I²S output path. Mixed audio is sent through the CrowPanel's NS4168 amplifier to external speakers.
 
-Broader in-game sound coverage still needs validation as gameplay progresses, but the digital sound backend itself is no longer merely a placeholder or untested port.
+Sound effects are active during normal gameplay, and the original Sound FX volume control works end-to-end, including its menu test sound and volume scaling.
+
+Descent also exposes a Sound Channels control in the Custom Detail Level menu. This provides an original engine mechanism for varying the number of simultaneous digital sound channels, making it useful both as a gameplay setting and as a measurable CPU-load control on the ESP32-S3.
+
+### Music
+
+Music is not implemented yet.
+
+This is a separate problem from digital sound effects. The original game provides sequenced music data rather than ready-to-play PCM audio, so dESPcent needs both a sequence player and a synthesizer or another method of producing the final audio stream.
+
+Several approaches are viable, with different costs:
+
+- **Software FM/OPL synthesis** would preserve the character of period DOS hardware and avoid large instrument banks, but adds continuous CPU load to an ESP32-S3 already performing software rendering, game simulation, sound mixing, Bluetooth, and RGB display output.
+
+- **General MIDI software synthesis** could provide music closer to a wavetable/MIDI setup, but requires an instrument bank in addition to synthesizer code. That consumes storage and potentially substantial RAM, while polyphonic synthesis adds another ongoing CPU workload.
+
+- **Pre-rendered music** could convert the original tracks to PCM or a compressed streaming format ahead of time and play them from SD. This is computationally much cheaper than real-time synthesis, but increases storage requirements and would no longer be synthesizing the original sequence data at runtime.
+
+- **External synthesis hardware** is also possible, but would add hardware requirements and is not appropriate as the baseline dESPcent configuration.
+
+- **No music** remains a valid configuration. Digital sound effects and gameplay do not depend on the music backend.
+
+The eventual choice will be based on measured cost rather than assuming that real-time synthesis is affordable. dESPcent already has several significant continuous workloads, so music must coexist with rendering, simulation, digital sound mixing, BLE input, and display scanout without compromising gameplay.
 
 ## Game Data
 
@@ -364,17 +573,12 @@ The project has crossed enough startup milestones that the remaining work is inc
 
 Current known incomplete areas include:
 
-- Root-causing the remaining "Issue 3" off-by-one write into the offscreen canvas. The corruption is now localized to a specific 1-byte, per-frame signature; the exact write site is not yet traced.
-- Hardware confirmation of the `scores_view()` scheduler-yield fix (the "View High Scores" watchdog timeout).
-- A tree-wide sweep for other instances of the double-free pattern found in `IFF.cpp` — an explicit `free()` immediately followed by a cleanup helper that also frees the same buffer.
+- Root-causing the remaining off-by-one write into the offscreen canvas. The corruption is now localized to a specific 1-byte, per-frame signature; the exact write site is not yet traced.
 - Remaining screen loops that need explicit `gr_present()` calls or FreeRTOS scheduler yields.
-- Hardware verification of the credits presentation fix and other screen-specific changes.
 - Final in-game controller axis behavior and bindings.
-- Full audio playback validation.
-- Player/config persistence cleanup. A present `.PLR` file does not yet always produce the expected Select Pilot flow, and controller-choice persistence is still being restored.
-- Display tearing/flicker associated with the current single-buffer memory strategy.
+- Full audio playback.
 - Performance characterization under real gameplay load: multiple robots, projectiles, collision checks, AI, sound mixing, and sustained rendering.
-- Network support.
+- Network support. The main-menu Multiplayer entry is reachable and one level deep. It shows Start a Network Game / Join a Network Game / Modem-Serial Game and exits cleanly back to the main menu, but none of those options do anything past that point yet.
 - Further DOS shim cleanup and consolidation.
 
 ## Development Philosophy
